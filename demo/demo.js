@@ -24,7 +24,7 @@ const PAL = {
 };
 const D_STEM = 'M37.5 29 A8.5 8.5 0 0 1 46 37.5 V90.5 A8.5 8.5 0 0 1 29 90.5 V37.5 A8.5 8.5 0 0 1 37.5 29 Z';
 const D_BOWL = 'M58 29 H64 A35 35 0 0 1 64 99 H58 A8.5 8.5 0 0 1 58 82 H64 A18 18 0 0 0 64 46 H58 A8.5 8.5 0 0 1 58 29 Z';
-const HEAD = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">';
+const HEAD = '<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">';
 const background = p => `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${p.bg[0]}"/><stop offset="1" stop-color="${p.bg[1]}"/></linearGradient><filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="120"/></filter><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="40"/></filter></defs><rect width="1920" height="1080" fill="url(#bg)"/>`;
 
 function dexGlow(p) {
@@ -40,13 +40,45 @@ function dexGlass(p) {
 }
 const FAMILIES = [['glass', 'Dex Glass', dexGlass], ['glow', 'Dex Glow', dexGlow]];
 const WALLS = FAMILIES.flatMap(([fam, , fn]) => Object.keys(PAL).map(pal => ({ id: `${fam}-${pal}`, fam, pal, fn })));
-const wallCache = {};
-function wallUrl(id) {
-  if (!wallCache[id]) {
+const svgCache = {};
+function svgUrl(id) {
+  if (!svgCache[id]) {
     const w = WALLS.find(x => x.id === id) || WALLS[0];
-    wallCache[id] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(w.fn(PAL[w.pal]));
+    svgCache[id] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(w.fn(PAL[w.pal]));
   }
-  return wallCache[id];
+  return svgCache[id];
+}
+/* The SVGs use big blurs, which are slow for the browser to redraw. Draw
+   each one into a plain bitmap once, at the size it's shown, and reuse that.
+   If the browser won't allow it, fall back to the SVG itself. */
+const rasterCache = {};
+function wallImg(id, w, h) {
+  const key = `${id}@${w}`;
+  if (!rasterCache[key]) {
+    rasterCache[key] = new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const s = Math.max(w / 1920, h / 1080), sw = w / s, sh = h / s;
+          c.getContext('2d').drawImage(img, (1920 - sw) / 2, (1080 - sh) / 2, sw, sh, 0, 0, w, h);
+          c.toBlob(b => resolve(b ? URL.createObjectURL(b) : svgUrl(id)), 'image/png');
+        } catch { resolve(svgUrl(id)); }
+      };
+      img.onerror = () => resolve(svgUrl(id));
+      img.src = svgUrl(id);
+    });
+  }
+  return rasterCache[key];
+}
+const wallBg = id => { const w = WALLS.find(x => x.id === id) || WALLS[0]; return PAL[w.pal].bg[0]; };
+/* <img data-wall-img="id"> gets its bitmap when it's ready. */
+function fillThumbs(root) {
+  $$('img[data-wall-img]', root).forEach(img => {
+    img.style.background = wallBg(img.dataset.wallImg);
+    wallImg(img.dataset.wallImg, 384, 240).then(u => { img.src = u; });
+  });
 }
 
 /* ---------- State ---------- */
@@ -167,6 +199,7 @@ function open(id, arg) {
 function focus(id) {
   const w = wins.get(id);
   if (!w) return;
+  if (front === id && w.el.classList.contains('top') && !w.el.classList.contains('min')) return;
   w.el.style.zIndex = ++zTop;
   front = id;
   wins.forEach(o => o.el.classList.toggle('top', o === w));
@@ -214,15 +247,29 @@ function drag(el) {
 }
 
 /* ---------- Dock ---------- */
+/* Rebuilding the taskbar makes its icons flicker, so only do that when the
+   set of apps on it changes. Otherwise just move the running/front marks. */
+let dockKey = '';
 function renderDock() {
   const d = $('#dock');
+  const extra = [...wins.keys()].filter(id => !PINNED.includes(id));
+  const key = extra.join(',');
+  if (key === dockKey && d.children.length) {
+    $$('.dk[data-id]', d).forEach(b => {
+      const id = b.dataset.id, w = wins.get(id);
+      b.classList.toggle('run', !!w);
+      b.classList.toggle('front', !!w && front === id && !w.el.classList.contains('min'));
+    });
+    return;
+  }
+  dockKey = key;
   d.innerHTML = '';
   const apps = h(`<button class="dk" data-tip="Apps" aria-label="Apps"><img src="icons/apps.svg" alt=""></button>`);
   apps.onclick = () => toggle('#drawer');
   d.append(apps);
   const item = id => {
     const a = APP[id], w = wins.get(id);
-    const b = h(`<button class="dk" data-tip="${esc(a.name)}" aria-label="${esc(a.name)}"><img src="${icon(a)}" alt=""></button>`);
+    const b = h(`<button class="dk" data-id="${id}" data-tip="${esc(a.name)}" aria-label="${esc(a.name)}"><img src="${icon(a)}" alt=""></button>`);
     if (w) b.classList.add('run');
     if (w && front === id && !w.el.classList.contains('min')) b.classList.add('front');
     b.onclick = () => {
@@ -234,7 +281,6 @@ function renderDock() {
     return b;
   };
   PINNED.forEach(id => d.append(item(id)));
-  const extra = [...wins.keys()].filter(id => !PINNED.includes(id));
   if (extra.length) { d.append(h('<span class="sep"></span>')); extra.forEach(id => d.append(item(id))); }
 }
 
@@ -306,6 +352,11 @@ function unlock() {
   setTimeout(() => { l.hidden = true; }, 450);
   if (!unlockedOnce) {
     unlockedOnce = true;
+    // Draw the wallpaper thumbnails ahead of time, one at a time, so opening
+    // Settings or Gallery doesn't stall.
+    let i = 0;
+    const warm = () => { if (i < WALLS.length) wallImg(WALLS[i++].id, 384, 240).then(() => setTimeout(warm, 120)); };
+    setTimeout(warm, 1500);
     setTimeout(() => toast('tips', 'Welcome to Dex OS', 'Open My Files, go to Downloads and double-click the .exe to see what happens. The Tips app has more ideas.', true), 700);
   }
 }
@@ -328,7 +379,11 @@ function lock() {
 
 /* ---------- Wallpaper and theme ---------- */
 function applyWall() {
-  $('#wall').src = wallUrl(S.wall);
+  const id = S.wall;
+  screen.style.background = wallBg(id);
+  const img = $('#wall');
+  img.onload = () => img.classList.add('ready');
+  wallImg(id, 1920, 1200).then(u => { if (S.wall === id) img.src = u; });
   $$('.walls button').forEach(b => b.classList.toggle('on', b.dataset.wall === S.wall));
 }
 function setWall(id) { S.wall = id; store.set('wall', id); applyWall(); }
@@ -546,7 +601,7 @@ function settingsApp(body, w, arg) {
     if (id === 'style') {
       html += sw('dark', 'Dark mode', 'Easier on the eyes at night');
       FAMILIES.forEach(([fam, name]) => {
-        html += `<h3 class="h2">${name}</h3><div class="walls">` + Object.keys(PAL).map(pal => `<button data-wall="${fam}-${pal}"><img alt="" loading="lazy" src="${wallUrl(fam + '-' + pal)}"><span>${PAL[pal].name}${PAL[pal].dark ? ' <i class="ph ph-moon"></i>' : ''}</span></button>`).join('') + '</div>';
+        html += `<h3 class="h2">${name}</h3><div class="walls">` + Object.keys(PAL).map(pal => `<button data-wall="${fam}-${pal}"><img alt="" data-wall-img="${fam}-${pal}"><span>${PAL[pal].name}${PAL[pal].dark ? ' <i class="ph ph-moon"></i>' : ''}</span></button>`).join('') + '</div>';
       });
       html += `<p class="p" style="margin-top:18px">Dex OS comes with 94 wallpapers, all drawn in code so they stay sharp on any screen. These are two of the families.</p>`;
     } else if (id === 'display') {
@@ -575,6 +630,7 @@ function settingsApp(body, w, arg) {
     }
     main.innerHTML = html;
     main.scrollTop = 0;
+    fillThumbs(main);
     $$('.sw', main).forEach(b => b.onclick = () => {
       const k = b.dataset.k;
       setOn(k, !(k === 'dark' ? !S.light : S.on[k]));
@@ -759,10 +815,11 @@ function galleryApp(body) {
   body.innerHTML = `<div class="gal"></div><p class="p" style="padding:0 16px 14px">Click a picture to use it as your wallpaper.</p>`;
   const g = $('.gal', body);
   WALLS.forEach(wl => {
-    const b = h(`<button aria-label="Use as wallpaper"><img alt="" loading="lazy" src="${wallUrl(wl.id)}"></button>`);
+    const b = h(`<button aria-label="Use as wallpaper"><img alt="" data-wall-img="${wl.id}"></button>`);
     b.onclick = () => { setWall(wl.id); toast('gallery', 'Wallpaper set', 'Nice pick.'); };
     g.append(b);
   });
+  fillThumbs(g);
 }
 
 /* Dex Store: apps come from Flathub on the real thing */

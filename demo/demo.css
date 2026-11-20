@@ -18,7 +18,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 @media (max-width:1000px){.bar .note{display:none}.bar{justify-content:space-between;padding:8px 16px}}
 
 #stage{flex:1 1 auto;position:relative;overflow:hidden;min-height:0}
-#screen{position:absolute;left:0;top:0;width:1280px;height:800px;transform-origin:0 0;overflow:hidden;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);user-select:none;-webkit-user-select:none;
+#screen{position:absolute;left:0;top:0;width:1280px;height:800px;transform-origin:0 0;overflow:hidden;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   --panel:rgba(24,28,44,.62);--panel-hi:rgba(255,255,255,.07);--panel-hi2:rgba(255,255,255,.12);--text:#f1f3f8;--muted:#a7aec0;--line:rgba(255,255,255,.12);
   --accent:#4b84f2;--win:#10121a;--win-side:#0a0c13;--dock:rgba(12,14,24,.82);--field:rgba(255,255,255,.08);color:var(--text)}
 #screen.light{--panel:rgba(246,248,253,.74);--panel-hi:rgba(20,30,60,.06);--panel-hi2:rgba(20,30,60,.1);--text:#151a28;--muted:#5d6477;--line:rgba(20,30,60,.12);
@@ -27,7 +27,9 @@ button{cursor:pointer;background:none;border:0;padding:0}
 #screen :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #screen input[type=text]:focus-visible,#screen textarea:focus-visible,#lock:focus-visible{outline:none}
 
-#wall{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#wall{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s}
+#wall.ready{opacity:1}
+.win:focus-visible{outline:none}
 #dim{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .3s;pointer-events:none}
 #shield{position:absolute;inset:0;pointer-events:none;background:#ff9a3c;mix-blend-mode:multiply;opacity:0;transition:opacity .4s;z-index:90}
 #shield.on{opacity:.22}
@@ -123,7 +125,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .dk img{width:32px;height:32px}
 .dk.run::after{content:"";position:absolute;bottom:1px;left:50%;width:6px;height:3px;border-radius:3px;background:var(--muted);transform:translateX(-50%)}
 .dk.front::after{width:14px;background:var(--accent)}
-.dk[data-tip]:hover::before{content:attr(data-tip);position:absolute;bottom:52px;left:50%;transform:translateX(-50%);background:var(--win);color:var(--text);border:1px solid var(--line);font-size:12px;padding:4px 8px;border-radius:8px;white-space:nowrap;pointer-events:none}
+@media (hover:hover){.dk[data-tip]:hover::before{content:attr(data-tip);position:absolute;bottom:52px;left:50%;transform:translateX(-50%);background:var(--win);color:var(--text);border:1px solid var(--line);font-size:12px;padding:4px 8px;border-radius:8px;white-space:nowrap;pointer-events:none}}
 .dk-nav{position:absolute;right:14px;top:0;bottom:0;display:flex;align-items:center;gap:6px}
 .dk-nav button{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:19px}
 .dk-nav button:hover{background:var(--panel-hi2)}
@@ -191,7 +193,7 @@ input[type=range]::-moz-range-thumb{width:6px;height:30px;border-radius:3px;back
 .qp-cards small{font-size:11.5px;color:var(--muted)}
 
 /* Toasts */
-#toasts{position:absolute;right:14px;top:40px;width:340px;display:flex;flex-direction:column;gap:8px;z-index:43;pointer-events:none}
+#toasts{position:absolute;right:14px;bottom:68px;width:340px;display:flex;flex-direction:column;gap:8px;z-index:43;pointer-events:none}
 .toast{display:flex;gap:12px;align-items:flex-start;background:var(--win);border:1px solid var(--line);border-radius:18px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.35);animation:slide .25s ease-out;pointer-events:auto}
 .toast.out{transition:opacity .3s,transform .3s;opacity:0;transform:translateX(20px)}
 @keyframes slide{from{opacity:0;transform:translateX(30px)}}
@@ -213,7 +215,7 @@ input[type=range]::-moz-range-thumb{width:6px;height:30px;border-radius:3px;back
 .win .ctl button:hover{background:var(--accent);color:#fff}
 .win .ctl .x:hover{background:#e5484d}
 .win .body{flex:1;overflow:auto;min-height:0;user-select:text;-webkit-user-select:text}
-.win:not(.top) .tbar{opacity:.75}
+.win:not(.top) .tbar{color:var(--muted)}
 
 /* Shared bits inside apps */
 .pad{padding:22px 26px}
