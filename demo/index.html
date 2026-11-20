@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dex OS demo</title>
+<meta name="description" content="Try the Dex OS desktop in your browser: the home screen, apps, quick panel and wallpapers. Nothing to install.">
+<meta name="theme-color" content="#05060b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Try Dex OS in your browser">
+<meta property="og:description" content="Click around the Dex OS desktop without installing anything.">
+<meta property="og:url" content="https://theonlyrealagentp.github.io/dexos/demo/">
+<meta property="og:image" content="https://theonlyrealagentp.github.io/dexos/img/og.png">
+<link rel="icon" href="../img/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="../"><img src="../img/logo.svg" alt="" width="22" height="22"><span>Dex OS</span><em>demo</em></a>
+  <p class="note">This runs in your browser, so nothing gets installed and nothing can break. Click around.</p>
+  <nav>
+    <a class="link" href="../">Back to the site</a>
+    <a class="btn" href="../#get">Get Dex OS</a>
+  </nav>
+</header>
+
+<div id="stage">
+  <div id="screen" role="application" aria-label="Dex OS desktop demo">
+    <img id="wall" alt="">
+    <div id="dim"></div>
+
+    <!-- Lock screen -->
+    <section id="lock" tabindex="0" aria-label="Lock screen. Click or press any key to unlock.">
+      <div class="lk-top"><i class="ph ph-wifi-high"></i></div>
+      <div class="lk-clock">
+        <p class="lk-date" data-date-long></p>
+        <p class="lk-time"><span data-time-short></span><small data-ampm></small></p>
+      </div>
+      <p class="lk-hint">Click, swipe up or press any key to unlock</p>
+    </section>
+
+    <!-- Desktop -->
+    <div id="desk" hidden>
+      <div class="topbar">
+        <div class="tb-time"><strong data-time-short></strong> <small data-ampm></small> <span data-date-short></span></div>
+        <button class="tb-status" id="qpBtn" aria-label="Open the quick panel">
+          <i class="ph ph-globe-simple" id="netIcon"></i><i class="ph ph-speaker-high" id="volIcon"></i>
+        </button>
+      </div>
+
+      <main class="home" id="home">
+        <div class="search" id="search">
+          <i class="ph ph-magnifying-glass"></i>
+          <input id="searchIn" type="text" placeholder="Search apps and files, or the web" autocomplete="off" spellcheck="false" aria-label="Search">
+          <div class="results" id="results" hidden></div>
+        </div>
+
+        <div class="shortcuts" id="shortcuts"></div>
+
+        <section class="card cal">
+          <h3 id="calTitle"></h3>
+          <div class="cal-grid" id="calGrid"></div>
+        </section>
+
+        <section class="card rem">
+          <h3><i class="ph ph-check"></i>Reminders <span class="count" id="remCount"></span></h3>
+          <ul id="remList"></ul>
+          <p class="empty" id="remEmpty">Nothing to remember yet.</p>
+          <form id="remForm" class="pill-input">
+            <input id="remIn" type="text" placeholder="Add a reminder, like &quot;Call Sam at 5pm&quot;" aria-label="New reminder" autocomplete="off">
+            <button aria-label="Add reminder"><i class="ph ph-plus"></i></button>
+          </form>
+        </section>
+
+        <section class="card dexter-w">
+          <h3><img src="icons/dexter.svg" alt="" class="h-ico">Dexter</h3>
+          <form id="askForm" class="pill-input">
+            <input id="askIn" type="text" placeholder="Ask Dexter..." aria-label="Ask Dexter" autocomplete="off">
+            <button class="send" aria-label="Send"><i class="ph-fill ph-paper-plane-tilt"></i></button>
+          </form>
+        </section>
+
+        <section class="card care">
+          <h3><i class="ph ph-leaf"></i>Device care</h3>
+          <div class="meter"><span>Power</span><b>Plugged in</b></div>
+          <div class="meter"><span>Processor</span><b id="cpuV">3%</b><i><u id="cpuB"></u></i></div>
+          <div class="meter"><span>Memory</span><b id="memV">18%</b><i><u id="memB"></u></i></div>
+          <div class="meter"><span>Storage</span><b>412 GB free</b><i><u style="width:18%"></u></i></div>
+        </section>
+
+        <section class="card batt">
+          <h3><i class="ph ph-battery-medium"></i>Batteries</h3>
+          <p class="muted">Connect earbuds, a mouse or your phone to see their batteries here.</p>
+        </section>
+
+        <div class="dots"><span class="on"></span><span></span></div>
+      </main>
+
+      <div id="wins"></div>
+
+      <!-- App drawer -->
+      <section class="drawer" id="drawer" hidden aria-label="Apps">
+        <header><h2>Apps</h2><div class="chips"><span class="chip on">A-Z</span><span class="chip">Custom</span><span class="chip">Edit</span></div></header>
+        <div class="grid" id="appGrid"></div>
+        <div class="search small"><i class="ph ph-magnifying-glass"></i><input id="drawerIn" type="text" placeholder="Search" aria-label="Search apps" autocomplete="off"></div>
+      </section>
+
+      <!-- Recent apps -->
+      <section class="recents" id="recents" hidden aria-label="Recent apps">
+        <div class="rc-list" id="rcList"></div>
+        <button class="rc-close" id="rcClose">Close all</button>
+      </section>
+
+      <!-- Quick panel -->
+      <section class="qp" id="qp" hidden aria-label="Quick panel">
+        <header>
+          <p><strong data-time-plain></strong> <span data-date-short></span></p>
+          <div class="qp-acts">
+            <button aria-label="Lock" id="qpLock" title="Lock"><i class="ph ph-power"></i></button>
+            <button aria-label="Settings" id="qpSet" title="Settings"><i class="ph ph-gear-six"></i></button>
+            <span class="avatar" aria-hidden="true"><i class="ph-fill ph-user"></i></span>
+          </div>
+        </header>
+        <div class="qp-big">
+          <button class="big on" data-tog="wifi"><i class="ph ph-wifi-high"></i><span><b>Wi-Fi</b><small id="wifiSub">Home network</small></span></button>
+          <button class="big" data-tog="bt"><i class="ph ph-bluetooth"></i><span><b>Bluetooth</b><small id="btSub">Off</small></span></button>
+        </div>
+        <div class="qp-grid" id="qpGrid"></div>
+        <div class="qp-vol">
+          <i class="ph ph-speaker-low"></i>
+          <input type="range" id="vol" min="0" max="100" value="45" aria-label="Volume">
+          <i class="ph ph-speaker-high"></i>
+        </div>
+        <div class="qp-cards">
+          <button data-open="settings:about"><i class="ph ph-device-mobile"></i><span><b>Connected devices</b><small>Phone, sharing</small></span></button>
+          <button data-open="wellbeing"><i class="ph ph-leaf"></i><span><b>Device care</b><small>Battery, storage</small></span></button>
+        </div>
+      </section>
+
+      <div id="toasts" aria-live="polite"></div>
+
+      <nav class="dock" aria-label="Taskbar">
+        <div class="dk-apps" id="dock"></div>
+        <div class="dk-nav">
+          <button id="kbBtn" aria-label="On-screen keyboard"><i class="ph ph-keyboard"></i></button>
+          <span class="sep"></span>
+          <button id="rcBtn" aria-label="Recent apps"><i class="ph ph-list" style="transform:rotate(90deg)"></i></button>
+          <button id="homeBtn" aria-label="Home"><i class="ph ph-square"></i></button>
+          <button id="backBtn" aria-label="Back"><i class="ph ph-caret-left"></i></button>
+        </div>
+      </nav>
+    </div>
+
+    <div id="shield"></div>
+    <div id="flash"></div>
+  </div>
+</div>
+
+<div id="rotate" hidden>
+  <div>
+    <i class="ph ph-device-rotate"></i>
+    <p>Dex OS is a desktop, so this works best with your phone turned sideways.</p>
+    <button class="btn" id="rotateOk">Show it anyway</button>
+  </div>
+</div>
+
+<script src="demo.js"></script>
+</body>
+</html>
